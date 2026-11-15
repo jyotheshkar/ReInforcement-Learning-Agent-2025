@@ -213,6 +213,9 @@ class AISaviorRL:
         self.trials += 1
         self.last_pos = (self.x, self.y)
         self.stay_timer = 0.0
+        self.blink_timer = 0.0
+        self.show_level_text = True
+        self.level_display_timer = 0.0
 
 
     def get_state(self,z):
@@ -343,7 +346,7 @@ class AISaviorRL:
         self.steps+=1
 
         if self.epsilon>EPSILON_MIN:
-            self.epsilon*=EPSILON_DECAY
+            self.epsilon = max(EPSILON_MIN, self.epsilon * EPSILON_DECAY)
 
     def advance_level(self):
         self.level += 1
@@ -402,9 +405,11 @@ while running:
         if hit_any:
             continue
 
-    done=ai_savior.health<=0
-    nst=ai_savior.get_state(zombies)
-    rew=-100 if done else -1
+    # Terminal observations belong to the completed world, before its reset.
+    dead = ai_savior.health <= 0
+    campaign_complete = not zombies and ai_savior.level == len(LEVELS)
+    done = dead or campaign_complete
+    rew = -100 if dead else -1
     distc=math.sqrt((ai_savior.x - CENTER_X)**2+(ai_savior.y - CENTER_Y)**2)
     if distc>CENTER_RADIUS:
         rew+=0.5
@@ -419,6 +424,13 @@ while running:
     else:
         rew+=0.5
 
+    # A lower-level wave change continues the episode. Capture its actual
+    # successor world, while retaining reward from the just-completed wave.
+    if not done and not zombies:
+        ai_savior.advance_level()
+        zombies = start_level(ai_savior.level)
+
+    nst=ai_savior.get_state(zombies)
     ai_savior.replay_buffer.add((st,act,rew,nst,done))
     ai_savior.train()
 
@@ -426,16 +438,6 @@ while running:
         ai_savior.reset()
         ai_savior.level=1
         zombies = start_level(ai_savior.level)
-
-    if len(zombies)==0 and not done:
-        if ai_savior.level<5:
-            ai_savior.advance_level()
-            zombies = start_level(ai_savior.level)
-        else:
-            ai_savior.advance_level()
-            ai_savior.reset()
-            ai_savior.level=1
-            zombies = start_level(ai_savior.level)
 
 
     screen.fill(BLACK)
