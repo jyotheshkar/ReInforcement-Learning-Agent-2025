@@ -1,12 +1,41 @@
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+APP_VERSION = "1.0.0"
+SMOKE_FRAMES = 72
+parser = argparse.ArgumentParser(description="Zombie Hunter DQN desktop demonstration")
+parser.add_argument("--version", action="version", version=f"Zombie Hunter DQN {APP_VERSION}")
+parser.add_argument("--smoke-test", action="store_true", help="Run 72 headless gameplay frames and verify learning execution")
+parser.add_argument("--smoke-report", type=Path, help="Write a JSON execution report (requires --smoke-test)")
+options = parser.parse_args()
+if options.smoke_report and not options.smoke_test:
+    parser.error("--smoke-report requires --smoke-test")
+if options.smoke_test:
+    # Only the explicit diagnostic mode suppresses the interactive window/audio.
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    os.environ["SDL_AUDIODRIVER"] = "dummy"
+    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+
 import pygame
 import random
 import math
-import os
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from collections import deque
+
+# The small CPU MLP stays responsive without a large BLAS worker pool competing
+# with the Pygame event loop. This does not change FPS or environment dynamics.
+torch.set_num_threads(1)
+if options.smoke_test:
+    random.seed(7)
+    np.random.seed(7)
+    torch.manual_seed(7)
+    torch.set_num_interop_threads(1)
 
 pygame.init()
 try:
@@ -341,7 +370,8 @@ class AISaviorRL:
         if self.steps%100==0:
             self.target_network.load_state_dict(self.q_network.state_dict())
             # Print RL info to terminal
-            print(f"Step: {self.steps}, Loss: {loss.item():.4f}, EPSILON: {self.epsilon:.4f}")
+            if sys.stdout is not None:
+                print(f"Step: {self.steps}, Loss: {loss.item():.4f}, EPSILON: {self.epsilon:.4f}")
 
         self.steps+=1
 
@@ -367,6 +397,9 @@ def start_level(level):
 
 zombies = start_level(ai_savior.level)
 running=True
+smoke_frames = 0
+if options.smoke_test:
+    smoke_initial_parameters = [p.detach().clone() for p in ai_savior.q_network.parameters()]
 
 while running:
     dt=clock.tick(FPS)/1000.0
@@ -466,5 +499,41 @@ while running:
             ai_savior.show_level_text=False
 
     pygame.display.flip()
+    if options.smoke_test:
+        smoke_frames += 1
+        if smoke_frames >= SMOKE_FRAMES:
+            running = False
 
 pygame.quit()
+
+if options.smoke_test:
+    # These are the actual game's observations and replay/Adam updates, not a
+    # synthetic experience fixture or a claim about the learned policy's quality.
+    state = ai_savior.get_state(zombies)
+    with torch.no_grad():
+        q_values = ai_savior.q_network(torch.as_tensor(state, device=device).unsqueeze(0))
+    parameters_finite = all(bool(torch.isfinite(p).all()) for p in ai_savior.q_network.parameters())
+    parameters_changed = any(not torch.equal(before, after) for before, after in
+                             zip(smoke_initial_parameters, ai_savior.q_network.parameters()))
+    passed = (smoke_frames == SMOKE_FRAMES and ai_savior.steps > 0
+              and len(ai_savior.replay_buffer) >= BATCH_SIZE
+              and state.shape == (STATE_SIZE,) and bool(np.isfinite(state).all())
+              and tuple(q_values.shape) == (1, ACTION_SPACE)
+              and bool(torch.isfinite(q_values).all()) and parameters_finite and parameters_changed)
+    report = {
+        "status": "passed" if passed else "failed", "version": APP_VERSION,
+        "frames": smoke_frames, "optimizer_updates": ai_savior.steps,
+        "replay_experiences": len(ai_savior.replay_buffer), "q_shape": list(q_values.shape),
+        "q_values_finite": bool(torch.isfinite(q_values).all()),
+        "parameters_finite": parameters_finite, "parameters_changed": parameters_changed,
+        "device": str(device), "frozen": bool(getattr(sys, "frozen", False)),
+        "python": sys.version.split()[0], "pygame": pygame.version.ver,
+        "numpy": np.__version__, "torch": torch.__version__,
+    }
+    if options.smoke_report:
+        options.smoke_report.parent.mkdir(parents=True, exist_ok=True)
+        options.smoke_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    if sys.stdout is not None:
+        print(json.dumps(report, sort_keys=True))
+    if not passed:
+        raise SystemExit(1)

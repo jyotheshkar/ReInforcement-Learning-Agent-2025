@@ -1,0 +1,5 @@
+# Install CPU Torch separately from its official wheel index; see BUILDING.md.
+numpy==2.4.6
+pygame==2.6.1
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.10
