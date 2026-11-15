@@ -10,7 +10,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import platform
 import re
 import shutil
@@ -122,6 +122,48 @@ def matching_pygame_source(output: Path) -> dict:
             "metadata_url": api, "bytes": destination.stat().st_size}
 
 
+def collect_pygame_source_notices(source: Path, destination: Path) -> list[str]:
+    """Copy original native notices even when a wheel omits developer docs.
+
+    The caller has verified this exact sdist's PyPI SHA-256. Read only selected
+    regular members; never extract the archive tree or follow archive links.
+    """
+    version = "2.6.1"
+    archive_root = f"pygame-{version}"
+    selected = {}
+    with tarfile.open(source, "r:gz") as archive:
+        for member in archive.getmembers():
+            path = PurePosixPath(member.name)
+            if (path.is_absolute() or ".." in path.parts or "\\" in member.name
+                    or not member.isfile() or member.size > 5 * 1024 * 1024):
+                continue
+            if len(path.parts) < 3 or path.parts[0] != archive_root:
+                continue
+            relative = PurePosixPath(*path.parts[1:])
+            if not (relative == PurePosixPath("docs/LGPL.txt")
+                    or relative.parent == PurePosixPath("docs/licenses")):
+                continue
+            if relative.suffix.lower() != ".txt":
+                continue
+            if str(relative) in selected:
+                raise RuntimeError("Duplicate source notice in pygame archive")
+            stream = archive.extractfile(member)
+            if stream is None:
+                raise RuntimeError("Could not read pygame source notice")
+            selected[str(relative)] = stream.read()
+    required = {"docs/LGPL.txt", "docs/licenses/LICENSE.sdl2.txt",
+                "docs/licenses/LICENSE.sdl2_image.txt", "docs/licenses/LICENSE.sdl2_mixer.txt"}
+    if not required.issubset(selected):
+        raise RuntimeError("Matching pygame source is missing required LGPL/SDL notices")
+    notices = []
+    for relative, content in sorted(selected.items()):
+        target = destination / f"pygame-{version}-source" / Path(*PurePosixPath(relative).parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        notices.append(target.relative_to(destination).as_posix())
+    return notices
+
+
 def run_smoke(executable: Path, work_directory: Path, report: Path) -> dict:
     environment = os.environ.copy()
     environment.update(SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy",
@@ -211,6 +253,10 @@ def build(target: str, source_sha: str, output: Path) -> None:
 
     inventory, notices = collect_notices(payload / "licenses")
     pygame_source = matching_pygame_source(output)
+    pygame_native_notices = collect_pygame_source_notices(
+        output / pygame_source["filename"], payload / "licenses")
+    notices = sorted(set(notices + pygame_native_notices))
+    print("Preserved Pygame/SDL source notices: " + json.dumps(pygame_native_notices))
     notice_text = (
         "Zombie Hunter DQN — third-party components\n\n"
         "This package retains the original licence terms for its dependencies.\n"
@@ -234,6 +280,7 @@ def build(target: str, source_sha: str, output: Path) -> None:
         "source_commit": source_sha, "target": target, "python": platform.python_version(),
         "build_platform": platform.platform(), "machine": platform.machine(),
         "dependencies": inventory, "pygame_corresponding_source": pygame_source,
+        "preserved_notice_files": notices, "pygame_source_notice_files": pygame_native_notices,
         "signing": "ad-hoc; no Developer ID or notarization" if target == "macos-arm64" else "unsigned",
         "policy_quality": "not evaluated; no pretrained checkpoint supplied",
     }
