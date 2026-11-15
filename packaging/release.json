@@ -1,0 +1,12 @@
+{
+  "application": "Zombie Hunter DQN",
+  "executable": "ZombieHunter",
+  "version": "1.0.0",
+  "tag": "desktop-v1.0.0",
+  "python": "3.11",
+  "platforms": {
+    "windows-x64": {"runner": "windows-2022", "system": "Windows", "machine": "AMD64", "archive": "ZombieHunter-windows-x64.zip", "executable_path": "ZombieHunter/ZombieHunter.exe"},
+    "linux-x64": {"runner": "ubuntu-22.04", "system": "Linux", "machine": "x86_64", "archive": "ZombieHunter-linux-x64.tar.gz", "executable_path": "ZombieHunter/ZombieHunter"},
+    "macos-arm64": {"runner": "macos-15", "system": "Darwin", "machine": "arm64", "archive": "ZombieHunter-macos-arm64.zip", "executable_path": "ZombieHunter/ZombieHunter.app/Contents/MacOS/ZombieHunter"}
+  }
+}

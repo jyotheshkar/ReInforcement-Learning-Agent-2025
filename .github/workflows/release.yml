@@ -1,0 +1,97 @@
+name: Native desktop release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source-contracts:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Source regressions and syntax
+        run: |
+          python -m unittest discover -s tests -v
+          python -m compileall -q ai.py tests scripts packaging legacy
+
+  native-build:
+    needs: source-contracts
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-x64
+            runner: windows-2022
+            python_arch: x64
+          - target: linux-x64
+            runner: ubuntu-22.04
+            python_arch: x64
+          - target: macos-arm64
+            runner: macos-15
+            python_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: ${{ matrix.python_arch }}
+          cache: pip
+          cache-dependency-path: packaging/requirements-build.txt
+      - name: Install official CPU PyTorch
+        run: python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install pinned packaging dependencies
+        run: python -m pip install -r packaging/requirements-build.txt
+      - name: Exercise source gameplay and actual learning
+        run: python ai.py --smoke-test --smoke-report build/source-smoke.json
+      - name: Build and test extracted native application
+        run: python packaging/build_desktop.py --target ${{ matrix.target }} --source-sha ${{ github.sha }}
+      - name: Retain verified release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: release-assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'jyotheshkar/ReInforcement-Learning-Agent-2025'
+    needs: [source-contracts, native-build]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish immutable release for this exact source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python packaging/publish_release.py --source-sha ${{ github.sha }} --assets release-assets

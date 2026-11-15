@@ -1,10 +1,10 @@
 # Setup, operation and recovery
 
-Updated 14 November 2026. Run from an extracted source checkout on a computer with a desktop display. No account, API key, hosted endpoint or external dataset is used by the game.
+Updated 15 November 2026. For the packaged desktop application, use the [download instructions](DOWNLOADS.md). This page describes running and inspecting a source checkout. No account, API key, hosted endpoint or external dataset is used by the game.
 
 ## Install and inspect
 
-Use the [README setup commands](../README.md#download-and-run). The dependencies match actual imports: NumPy, Pygame and PyTorch. Python 3.11 and 3.12 parsed the source and ran the focused checks during review; full desktop operation was not verified locally.
+Use the [README setup commands](../README.md#run-from-source). The dependencies match actual imports: NumPy, Pygame and PyTorch. Python 3.11 and 3.12 parsed the source and ran the focused checks during review; full desktop operation was not verified locally.
 
 For CPU/CUDA selection, use the [official PyTorch installer](https://pytorch.org/get-started/locally/). The source needs `torch`, not torchvision or torchaudio. Pygame documents its [basic installation and loop](https://www.pygame.org/docs/), and NumPy provides [installation guidance](https://numpy.org/install/). Install into the virtual environment used to launch the game.
 
@@ -12,7 +12,7 @@ The unpinned `requirements.txt` declares imports, not a reproducible lock. Retai
 
 ## Launch and stop
 
-The entry point is `ai.py`. Run it from the repository directory. It immediately opens a 1200-by-700 Pygame window and trains while playing. It has no CLI parser, headless flag, seed flag, saved-policy mode or keyboard-controlled player.
+The entry point is `ai.py`. Run it from the repository directory. Normal launch opens a 1200-by-700 Pygame window and trains while playing. `--version` prints the application version without loading the game dependencies. `--smoke-test --smoke-report PATH` runs a bounded, seeded diagnostic with SDL dummy drivers and saves its execution report. There is no saved-policy mode or keyboard-controlled player. The small CPU network uses one Torch computation thread to keep the event loop responsive.
 
 Close the window to stop normally; the loop calls `pygame.quit()` on exit. If it freezes, stop the terminal process. Weights, optimiser state and replay are not saved, so there is no persistent learning state to recover. Avoid importing `ai.py` into other applications because it starts the interactive loop.
 

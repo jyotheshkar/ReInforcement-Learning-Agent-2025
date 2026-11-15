@@ -37,3 +37,11 @@ No convergence experiment, saved-policy evaluation, controlled benchmark or supp
 ## Hosted validation — 15 November 2026
 
 [GitHub Actions run 43676931574](https://github.com/jyotheshkar/ReInforcement-Learning-Agent-2025/actions/runs/43676931574) passed both jobs on the reviewed code: the ten source-contract regressions and a real CPU PyTorch/Pygame smoke. The smoke exercised one bounded game frame, a five-output network forward pass, and a finite optimiser update using explicitly synthetic in-memory transition fixtures. No policy convergence, gameplay score or learning-performance result is claimed. Local absence of these ML/game dependencies remains as recorded above.
+
+## Native desktop release checks - 15 November 2026
+
+The desktop workflow builds Windows x64, Ubuntu x64 and macOS Apple-silicon packages with Python 3.11 and pinned dependencies. It first checks the source, then runs each frozen application before archiving and again after extraction into an unrelated working directory. Publishing requires every target to pass.
+
+The explicit `--smoke-test` mode runs 72 real gameplay frames with SDL dummy drivers, fills replay past 64 experiences, and checks actual Adam updates, a finite five-value Q output and changed, finite network parameters. This does not use the earlier source smoke's synthetic transition fixtures. Default launch remains the interactive autoplay game.
+
+Each published platform manifest identifies its exact source commit, installed dependencies, archive size/hash, signing status and extracted-executable execution report. Inspect those [release assets](https://github.com/jyotheshkar/ReInforcement-Learning-Agent-2025/releases/tag/desktop-v1.0.0) and the associated [native workflow](https://github.com/jyotheshkar/ReInforcement-Learning-Agent-2025/actions/workflows/release.yml) for actual results. Human visible-window, audio-device and broad laptop compatibility tests are not established by this automated check.
