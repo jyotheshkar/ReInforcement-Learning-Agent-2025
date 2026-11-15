@@ -1,106 +1,66 @@
-# Zombie Hunter with Reinforcement Learning
+# Zombie Hunter: a DQN learning game
 
-## Architecture and maintenance
+An educational Python game in which an online Deep Q-Network selects movement or shooting actions while zombies approach the player. Pygame renders the world; PyTorch updates a Q-network from a bounded replay buffer.
 
-[Technical architecture, source boundaries, scalability decisions and verification](docs/ARCHITECTURE_MAINTENANCE.md) documents the current implementation and its limits. Maintenance dated 11 November 2026 is separate from the original study or project work.
+The source demonstrates reinforcement-learning mechanics. No trained checkpoint, controlled learning curve or evidence of an optimal policy is included.
 
+![Existing repository game screenshot](RL%20agent.png)
 
-## Description
-**Zombie Hunter with Reinforcement Learning** is a Python-based game that combines AI-powered gameplay with classic zombie-shooting action. The AI agent, controlled by a Deep Q-Network (DQN), learns to survive, shoot zombies, and progress through levels while maintaining its health and avoiding dangers. The game features reinforcement learning mechanics, dynamically spawning zombies, and a visually appealing interface using **Pygame**.
+## Explore the project
 
----
+| Resource | What it explains |
+| --- | --- |
+| [Current source](ai.py) | Game rules, five-value observation, five actions and DQN update |
+| [Architecture and RL contract](docs/ARCHITECTURE.md) | Exact state, actions, reward rules, episode lifecycle and design limits |
+| [Setup and operating guide](docs/RUNBOOK.md) | Correct launcher, dependencies, optional audio and recovery |
+| [Verification record](docs/VERIFICATION.md) | Focused regressions, real-dependency smoke design and remaining limits |
+| [Source provenance](docs/PROVENANCE.md) | Inspected commit, preserved baseline and dated maintenance |
+| [Pre-update source snapshot](legacy/baseline-2026-11-14/) | Exact inspected source before this update |
 
-## Features
-- **AI-Powered Gameplay**: The AI agent learns optimal strategies using reinforcement learning.
-- **Levels and Progression**: Gradual difficulty increases with zombies starting from level 1 (25 zombies) to level 5 (300 zombies).
-- **Dynamic Actions**: AI can move, shoot, and avoid zombies dynamically.
-- **Health and Damage Mechanics**: AI health depletes if hit by zombies or if stationary for too long.
-- **Blinking Animation**: Visual feedback for damage events.
-- **Sound Effects**: Optional sound effects for shooting, taking damage, zombie deaths, and level progression.
+## Download and run
 
----
+[Download the source ZIP](https://github.com/jyotheshkar/ReInforcement-Learning-Agent-2025/archive/refs/heads/main.zip), extract it and open a terminal in that directory. The launcher is **`ai.py`**. A desktop display is required.
 
-## Technologies Used
-- **Python**: Main programming language.
-- **Pygame**: For game visuals and mechanics.
-- **PyTorch**: For implementing the Deep Q-Network (DQN).
-- **NumPy**: For numerical operations.
-- **Random**: For spawning zombies at random locations.
-- **Math**: For calculating distances and angles.
+Use Python 3.11 or 3.12 for the documented setup. On Windows PowerShell:
 
----
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe ai.py
+```
 
-## Installation
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/your-username/zombie-hunter-rl.git
-   cd zombie-hunter-rl
-Install Dependencies: Ensure you have Python installed. Then install the required libraries:
-bash
-Copy
-Edit
-pip install pygame torch numpy
-Add Sound Effects (Optional):
-Place shoot.wav, hit.wav, zombie_death.wav, and level_up.wav in the project directory. If these files are not found, the game will work without sound.
-How to Play
-Run the game:
-bash
-Copy
-Edit
-python zombie_hunter_rl.py
-Observe the AI agent:
-The agent learns to avoid damage, shoot zombies, and survive as long as possible.
-Progress through levels:
-Levels increase as zombies are cleared. The number of zombies increases with each level.
-Game Over:
-If the AI's health reaches zero, the game resets to level 1.
-AI Mechanism
-State Representation: Includes the AI's position, nearest zombie's position, and health.
-Actions: Move up, down, left, right, or shoot at zombies.
-Reward System:
-Positive rewards for killing zombies and moving strategically.
-Negative rewards for losing health or staying idle.
-Training:
-The DQN is trained with experiences stored in a replay buffer.
-Target network updates every 100 steps for stable learning.
-Game Details
-Screen Size: 1200 x 700 pixels.
-Frame Rate: 60 FPS.
-AI Features:
-Rotating animation for visual enhancement.
-Blinking circle effect when damaged.
-Zombie Mechanics:
-Zombies spawn at random edges and move toward the AI.
-Zombies have health bars and can deal damage on contact.
-Bullet Mechanics:
-Bullets track and hit zombies, reducing their health.
-Future Enhancements
-Add more zombie types (e.g., faster zombies, boss zombies).
-Introduce power-ups for the AI (e.g., health packs, temporary speed boosts).
-Allow user-controlled gameplay alongside AI.
-Implement a leaderboard to track high scores.
-Contributing
-Fork the repository.
-Create a feature branch:
-bash
-Copy
-Edit
-git checkout -b feature-name
-Commit changes:
-bash
-Copy
-Edit
-git commit -m "Description of changes"
-Push and create a pull request:
-bash
-Copy
-Edit
-git push origin feature-name
-License
-This project is licensed under the MIT License. See the LICENSE file for more details.
+On macOS or Linux:
 
-Acknowledgments
-Inspired by classic arcade zombie games.
-Special thanks to the open-source community for providing tools like Pygame and PyTorch.
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python ai.py
+```
 
-**Year provenance:** The `2025` suffix records this repository's creation year (created 2025-01-27). Later maintenance retains its own dates.
+The agent plays automatically; movement keys do not control it. Close the game window to stop. Weights and replay exist only in memory and are lost on exit. Optional sounds are not supplied. See the [runbook](docs/RUNBOOK.md) for platform-specific PyTorch builds and setup limits.
+
+The dependency file lists the actual imports; it is not a tested lockfile. A fresh package installation and full desktop launch were not performed locally during this update because Pygame and PyTorch were unavailable.
+
+## Verify
+
+Without the game dependencies:
+
+```sh
+python -m unittest discover -s tests -v
+```
+
+Ten standard-library checks execute isolated production methods and transition statements without importing the game module. They cover exploration, reset boundaries, death, final-wave completion and continuing wave transitions.
+
+With dependencies installed, a bounded headless check is available:
+
+```sh
+python scripts/runtime_smoke.py
+```
+
+The GitHub workflow also runs this real-dependency smoke with CPU PyTorch and SDL dummy drivers. It checks startup/exit, a Q-network forward pass and an optimiser update using labelled synthetic test fixtures. Check the hosted run's actual status; this is not a convergence or policy-quality experiment. See [verification](docs/VERIFICATION.md).
+
+## Maintenance and scope
+
+The 14 November 2026 fixes clamp exploration to its minimum, clear stale damage-flash/banner state on reset, mark final-wave completion terminal, and record the actual successor world when a lower-level wave advances. A preserved baseline and the [11 November maintenance note](docs/ARCHITECTURE_MAINTENANCE.md) keep the history inspectable.
+
+The `2025` suffix records the repository creation year, 27 January 2025. Later changes retain their own dates. No `LICENSE` file is present, so no blanket MIT licence is asserted for this source.

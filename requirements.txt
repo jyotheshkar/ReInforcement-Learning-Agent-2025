@@ -1,0 +1,5 @@
+# Runtime imports. An unpinned declaration, not a tested lockfile.
+# For a platform-specific build, follow https://pytorch.org/get-started/locally/
+numpy
+pygame
+torch
