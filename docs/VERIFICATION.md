@@ -33,3 +33,7 @@ Its in-memory training batch is explicitly synthetic test data. No checkpoint or
 Default Python 3.11.15 has no NumPy, PyTorch or Pygame. The available bundled Python 3.12.14 has NumPy but no PyTorch or Pygame. No packages were installed locally, so no actual desktop/audio/GPU run or clean local dependency installation was performed.
 
 No convergence experiment, saved-policy evaluation, controlled benchmark or supported-platform matrix is established. Passing source boundaries and a bounded tensor/window smoke cannot establish that this agent learns an effective policy. Before broader claims, retain actual desktop evidence and a separately specified no-learning evaluation over held-out seeds.
+
+## Hosted validation — 15 November 2026
+
+[GitHub Actions run 43676931574](https://github.com/jyotheshkar/ReInforcement-Learning-Agent-2025/actions/runs/43676931574) passed both jobs on the reviewed code: the ten source-contract regressions and a real CPU PyTorch/Pygame smoke. The smoke exercised one bounded game frame, a five-output network forward pass, and a finite optimiser update using explicitly synthetic in-memory transition fixtures. No policy convergence, gameplay score or learning-performance result is claimed. Local absence of these ML/game dependencies remains as recorded above.
